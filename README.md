@@ -23,7 +23,7 @@ A JWT-secured NestJS REST API for managing services and customer bookings, built
 | Search Bookings (by customer name/email)                      | ✅     |
 | Docker Support                                                | 🚧     |
 | Unit Testing                                                  | ✅     |
-| Refresh Token                                                 | 📋     |
+| Refresh Token (with rotation)                                 | ✅     |
 
 **Legend:** ✅ Done &nbsp;|&nbsp; 🚧 In Progress &nbsp;|&nbsp; 📋 Planned
 
@@ -109,11 +109,14 @@ Copy `.env.example` to `.env` and fill in your local values:
 cp .env.example .env
 ```
 
-| Variable       | Description                                                                                                     | Example                                                                           |
-| -------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `PORT`         | Port the API listens on                                                                                         | `3001`                                                                            |
-| `DATABASE_URL` | Full Prisma connection string (must be written out fully, not templated — `.env` doesn't support interpolation) | `postgresql://<DB_USERNAME>:<DB_PASSWORD>@<DB_HOST>:5432/<DB_NAME>?schema=public` |
-| `JWT_SECRET`   | Secret used to sign JWTs                                                                                        | `your-super-secret-key`                                                           |
+| Variable                 | Description                                                                                                     | Example                                                                           |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `PORT`                   | Port the API listens on                                                                                         | `3001`                                                                            |
+| `DATABASE_URL`           | Full Prisma connection string (must be written out fully, not templated — `.env` doesn't support interpolation) | `postgresql://<DB_USERNAME>:<DB_PASSWORD>@<DB_HOST>:5432/<DB_NAME>?schema=public` |
+| `JWT_SECRET`             | Secret used to sign access tokens                                                                               | `your-super-secret-key`                                                           |
+| `JWT_ACCESS_EXPIRES_IN`  | Access token lifetime                                                                                           | `15m`                                                                             |
+| `JWT_REFRESH_SECRET`     | Secret used to sign refresh tokens (must differ from `JWT_SECRET`)                                              | `your-different-refresh-secret-key`                                               |
+| `JWT_REFRESH_EXPIRES_IN` | Refresh token lifetime                                                                                          | `7d`                                                                              |
 
 ---
 
@@ -183,8 +186,6 @@ npm run test
 
 # run a specific test file
 npm run test -- bookings.service.spec.ts
-npm run test -- service.service.spec.ts
-npm run test -- auth.service.spec.ts
 
 # run tests in watch mode
 npm run test:watch
@@ -211,20 +212,22 @@ one, then click **Authorize** in the Swagger UI and paste the `accessToken`.
 
 ### Endpoint Summary
 
-| Method | Endpoint               | Auth      | Description                                       |
-| ------ | ---------------------- | --------- | ------------------------------------------------- |
-| POST   | `/auth/register`       | Public    | Register a new user                               |
-| POST   | `/auth/login`          | Public    | Login, returns JWT                                |
-| POST   | `/services`            | Protected | Create a service                                  |
-| GET    | `/services`            | Protected | List services (paginated)                         |
-| GET    | `/services/:id`        | Protected | Get a service by id                               |
-| PATCH  | `/services/:id`        | Protected | Update a service                                  |
-| DELETE | `/services/:id`        | Protected | Soft-delete a service                             |
-| POST   | `/bookings`            | Public    | Create a booking                                  |
-| GET    | `/bookings`            | Protected | List bookings (paginated, filterable, searchable) |
-| GET    | `/bookings/:id`        | Protected | Get a booking by id                               |
-| PATCH  | `/bookings/:id/status` | Protected | Update booking status                             |
-| DELETE | `/bookings/:id`        | Protected | Cancel a booking                                  |
+| Method | Endpoint               | Auth      | Description                                         |
+| ------ | ---------------------- | --------- | --------------------------------------------------- |
+| POST   | `/auth/register`       | Public    | Register a new user                                 |
+| POST   | `/auth/login`          | Public    | Login, returns access + refresh tokens              |
+| POST   | `/auth/refresh`        | Public    | Exchange a valid refresh token for a new token pair |
+| POST   | `/auth/logout`         | Protected | Invalidate the current refresh token                |
+| POST   | `/services`            | Protected | Create a service                                    |
+| GET    | `/services`            | Protected | List services (paginated)                           |
+| GET    | `/services/:id`        | Protected | Get a service by id                                 |
+| PATCH  | `/services/:id`        | Protected | Update a service                                    |
+| DELETE | `/services/:id`        | Protected | Soft-delete a service                               |
+| POST   | `/bookings`            | Public    | Create a booking                                    |
+| GET    | `/bookings`            | Protected | List bookings (paginated, filterable, searchable)   |
+| GET    | `/bookings/:id`        | Protected | Get a booking by id                                 |
+| PATCH  | `/bookings/:id/status` | Protected | Update booking status                               |
+| DELETE | `/bookings/:id`        | Protected | Cancel a booking                                    |
 
 ---
 
@@ -246,11 +249,31 @@ the following deliberate decisions were made:
 
 - `POST /auth/register` returns only the created user object (no token) —
   registration and authentication are treated as distinct actions. A separate
-  `POST /auth/login` call is required to obtain a JWT.
+  `POST /auth/login` call is required to obtain a token pair.
 - JWTs are validated via a global guard (`APP_GUARD`); routes are protected by
   default, with a `@Public()` decorator used to explicitly opt out
-  (`register`, `login`, `POST /bookings`). This "secure by default" design
-  ensures new endpoints are never accidentally left unprotected.
+  (`register`, `login`, `refresh`, `POST /bookings`). This "secure by default"
+  design ensures new endpoints are never accidentally left unprotected.
+- **Refresh token strategy**: access tokens are short-lived (default `15m`)
+  and refresh tokens are long-lived (default `7d`), signed with a separate
+  secret. On each successful refresh, both tokens are rotated (a new access
+  _and_ refresh token are issued), and the previous refresh token becomes
+  permanently unusable — its hash no longer matches what's stored, so reuse
+  of an old refresh token is rejected with `401`.
+- **Refresh token storage**: only a hash of the current refresh token is
+  stored on the `User` record (never the raw token), using SHA-256 rather
+  than bcrypt — bcrypt truncates input beyond 72 bytes, which caused distinct
+  long JWT strings sharing a common prefix to hash identically. SHA-256 has
+  no such truncation limit and is appropriate here since refresh tokens are
+  already high-entropy random-looking values, unlike user passwords, which
+  still use bcrypt intentionally for its slow, salted hashing.
+- **Logout scope**: `POST /auth/logout` invalidates the stored refresh token
+  only. The access token used to make the logout request remains valid until
+  its natural expiry, since JWTs are verified statelessly (signature + expiry
+  claim only, no database lookup) and are not checked against a blacklist on
+  each request. This is standard behavior for refresh-token-based auth
+  without a token blacklist, and the impact is bounded by keeping access
+  tokens short-lived.
 
 ### Services
 
@@ -309,8 +332,6 @@ the following deliberate decisions were made:
 Given the project's time constraints, the following were consciously scoped
 out but would be natural next steps:
 
-- **Refresh tokens** — currently, JWTs are short-lived with no refresh flow;
-  a production system would add a refresh token endpoint and rotation strategy.
 - **Role-based access control** — if the platform grows to distinguish service
   providers from platform admins, a `role` field and route-level authorization
   would be introduced.
@@ -319,6 +340,10 @@ out but would be natural next steps:
   service catalogs are small enough that pagination alone is sufficient.
 - **Rate limiting** — particularly on the public `POST /bookings` endpoint,
   to prevent abuse given it requires no authentication.
+- **Access token revocation** — logout currently invalidates only the refresh
+  token; a token blacklist (e.g. Redis-backed, checked in the guard) would
+  allow immediate access token revocation as well, at the cost of a database/
+  cache lookup on every authenticated request.
 - **Soft-delete on Bookings/Users** — currently only Services use soft
   deletion; a consistent soft-delete strategy across all entities could be
   introduced for full audit-trail support.

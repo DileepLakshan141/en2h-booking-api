@@ -58,11 +58,9 @@ describe('BookingsService', () => {
     it('throws NotFoundException if service does not exist', async () => {
       prisma.service.findUnique.mockResolvedValue(null);
 
-      await expect(service.createBooking(baseDto as any)).rejects.toMatchObject(
-        {
-          status: HttpStatus.NOT_FOUND,
-        },
-      );
+      await expect(service.createBooking(baseDto)).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+      });
     });
 
     it('throws BadRequestException if bookingDate is in the past', async () => {
@@ -70,11 +68,9 @@ describe('BookingsService', () => {
 
       const pastDto = { ...baseDto, bookingDate: '2020-01-01' };
 
-      await expect(service.createBooking(pastDto as any)).rejects.toMatchObject(
-        {
-          status: HttpStatus.BAD_REQUEST,
-        },
-      );
+      await expect(service.createBooking(pastDto)).rejects.toMatchObject({
+        status: HttpStatus.BAD_REQUEST,
+      });
     });
 
     it('throws ConflictException when the new booking overlaps an existing one', async () => {
@@ -86,11 +82,9 @@ describe('BookingsService', () => {
         },
       ]);
 
-      await expect(service.createBooking(baseDto as any)).rejects.toMatchObject(
-        {
-          status: HttpStatus.CONFLICT,
-        },
-      );
+      await expect(service.createBooking(baseDto)).rejects.toMatchObject({
+        status: HttpStatus.CONFLICT,
+      });
     });
 
     it('allows booking when no overlap exists', async () => {
