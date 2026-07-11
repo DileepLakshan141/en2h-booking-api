@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
+import { BookingStatus } from '../generated/prisma/enums';
 
 @Injectable()
 export class ServiceService {
@@ -36,9 +37,23 @@ export class ServiceService {
   }
 
   async deleteService(id: string) {
-    await this.getServiceById(id);
-    return await this.prisma.service.delete({
+    const activeBookingsCount = await this.prisma.booking.count({
+      where: {
+        serviceId: id,
+        status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+      },
+    });
+
+    if (activeBookingsCount > 0) {
+      throw new HttpException(
+        'Cannot delete a service with pending or confirmed bookings',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    return this.prisma.service.update({
       where: { id },
+      data: { isActive: false },
     });
   }
 }
