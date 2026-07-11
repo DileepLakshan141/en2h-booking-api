@@ -1,12 +1,11 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingStatusDto } from './dto/update-booking-status.dto';
 import { BookingStatus } from '../generated/prisma/enums';
-import { PaginationDto } from '../common/dto/pagination.dto';
-import { Booking } from '../generated/prisma/client';
+import { Booking, Prisma } from '../generated/prisma/client';
 import { PaginatedResponse } from '../common/dto/paginated-response.dto';
+import { BookingQueryDto } from './dto/booking-query.dto';
 
 @Injectable()
 export class BookingsService {
@@ -75,19 +74,30 @@ export class BookingsService {
     return hours * 60 + minutes;
   }
 
-  async findAll(
-    pagination: PaginationDto,
-  ): Promise<PaginatedResponse<Booking>> {
-    const { page = 1, limit = 10 } = pagination;
+  async findAll(query: BookingQueryDto): Promise<PaginatedResponse<Booking>> {
+    const { page = 1, limit = 10, status, search } = query;
     const skip = (page - 1) * limit;
+
+    const whereStatement: Prisma.BookingWhereInput = {
+      ...(status && { status }),
+      ...(search && {
+        OR: [
+          { customerName: { contains: search, mode: 'insensitive' } },
+          { customerEmail: { contains: search, mode: 'insensitive' } },
+        ],
+      }),
+    };
 
     const [data, total] = await Promise.all([
       this.prisma.booking.findMany({
+        where: whereStatement,
         skip,
         take: limit,
         include: { service: true },
       }),
-      this.prisma.booking.count(),
+      this.prisma.booking.count({
+        where: whereStatement,
+      }),
     ]);
 
     return {

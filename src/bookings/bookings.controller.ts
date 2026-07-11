@@ -13,7 +13,7 @@ import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingStatusDto } from './dto/update-booking-status.dto';
 import { Public } from '../common/decorators/public.decorator';
-import { PaginationDto } from '../common/dto/pagination.dto';
+import { BookingQueryDto } from './dto/booking-query.dto';
 
 @ApiTags('Bookings')
 @Controller('bookings')
@@ -29,9 +29,11 @@ export class BookingsController {
 
   @ApiBearerAuth()
   @Get()
-  @ApiOperation({ summary: 'Get all bookings (with pagination)' })
-  findAll(@Query() pagination: PaginationDto) {
-    return this.bookingsService.findAll(pagination);
+  @ApiOperation({
+    summary: 'Get all bookings (with pagination and search and filter)',
+  })
+  findAll(@Query() query: BookingQueryDto) {
+    return this.bookingsService.findAll(query);
   }
 
   @ApiBearerAuth()
