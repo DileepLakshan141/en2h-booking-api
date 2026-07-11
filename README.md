@@ -22,7 +22,7 @@ A JWT-secured NestJS REST API for managing services and customer bookings, built
 | Filter Bookings by Status                                     | ✅     |
 | Search Bookings (by customer name/email)                      | ✅     |
 | Docker Support                                                | 🚧     |
-| Unit Testing                                                  | 🚧     |
+| Unit Testing                                                  | ✅     |
 | Refresh Token                                                 | 📋     |
 
 **Legend:** ✅ Done &nbsp;|&nbsp; 🚧 In Progress &nbsp;|&nbsp; 📋 Planned
@@ -39,6 +39,7 @@ A JWT-secured NestJS REST API for managing services and customer bookings, built
   - [Database Setup](#database-setup)
   - [Running the Application](#running-the-application)
   - [Running Migrations](#running-migrations)
+  - [Running Tests](#running-tests)
   - [API Documentation](#api-documentation)
     - [Endpoint Summary](#endpoint-summary)
   - [Assumptions Made](#assumptions-made)
@@ -167,6 +168,33 @@ npx prisma migrate dev
 # after changing schema.prisma, generate + apply a new migration
 npx prisma migrate dev --name <migration_name>
 ```
+
+---
+
+## Running Tests
+
+Unit tests cover the core business logic — booking overlap detection, booking
+status transition rules, authentication (register/login), and the service
+soft-delete logic.
+
+```bash
+# run all unit tests
+npm run test
+
+# run a specific test file
+npm run test -- bookings.service.spec.ts
+npm run test -- service.service.spec.ts
+npm run test -- auth.service.spec.ts
+
+# run tests in watch mode
+npm run test:watch
+
+# run tests with coverage report
+npm run test:cov
+```
+
+Prisma Client and business logic are mocked at the `PrismaService` level, so
+tests run without requiring a live database connection.
 
 ---
 
