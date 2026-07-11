@@ -3,13 +3,42 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
 import { BookingStatus } from '../generated/prisma/enums';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { PaginatedResponse } from '../common/dto/paginated-response.dto';
+import { Service } from '../generated/prisma/client';
 
 @Injectable()
 export class ServiceService {
   constructor(private prisma: PrismaService) {}
 
-  async getAllServices() {
-    return await this.prisma.service.findMany();
+  async getAllServices(
+    pagination: PaginationDto,
+  ): Promise<PaginatedResponse<Service>> {
+    const { page = 1, limit = 10 } = pagination;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.prisma.service.findMany({
+        where: { isActive: true },
+        skip,
+        take: limit,
+      }),
+      this.prisma.service.count({
+        where: {
+          isActive: true,
+        },
+      }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async getServiceById(id: string) {
@@ -37,6 +66,7 @@ export class ServiceService {
   }
 
   async deleteService(id: string) {
+    await this.getServiceById(id);
     const activeBookingsCount = await this.prisma.booking.count({
       where: {
         serviceId: id,

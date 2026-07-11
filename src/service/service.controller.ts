@@ -6,11 +6,13 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ServiceService } from './service.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 
 @Controller('service')
 @ApiTags('Service')
@@ -19,9 +21,9 @@ export class ServiceController {
   constructor(private serviceService: ServiceService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get all services' })
-  async getAllServices() {
-    return this.serviceService.getAllServices();
+  @ApiOperation({ summary: 'Get all services (with pagination)' })
+  async getAllServices(@Query() pagination: PaginationDto) {
+    return this.serviceService.getAllServices(pagination);
   }
 
   @Get(':id')

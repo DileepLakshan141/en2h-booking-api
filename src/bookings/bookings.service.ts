@@ -4,6 +4,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingStatusDto } from './dto/update-booking-status.dto';
 import { BookingStatus } from '../generated/prisma/enums';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { Booking } from '../generated/prisma/client';
+import { PaginatedResponse } from '../common/dto/paginated-response.dto';
 
 @Injectable()
 export class BookingsService {
@@ -72,8 +75,30 @@ export class BookingsService {
     return hours * 60 + minutes;
   }
 
-  findAll() {
-    return this.prisma.booking.findMany({ include: { service: true } });
+  async findAll(
+    pagination: PaginationDto,
+  ): Promise<PaginatedResponse<Booking>> {
+    const { page = 1, limit = 10 } = pagination;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.prisma.booking.findMany({
+        skip,
+        take: limit,
+        include: { service: true },
+      }),
+      this.prisma.booking.count(),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async findOne(id: string) {

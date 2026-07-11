@@ -6,12 +6,14 @@ import {
   Delete,
   Param,
   Body,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingStatusDto } from './dto/update-booking-status.dto';
 import { Public } from '../common/decorators/public.decorator';
+import { PaginationDto } from '../common/dto/pagination.dto';
 
 @ApiTags('Bookings')
 @Controller('bookings')
@@ -27,9 +29,9 @@ export class BookingsController {
 
   @ApiBearerAuth()
   @Get()
-  @ApiOperation({ summary: 'Get all bookings' })
-  findAll() {
-    return this.bookingsService.findAll();
+  @ApiOperation({ summary: 'Get all bookings (with pagination)' })
+  findAll(@Query() pagination: PaginationDto) {
+    return this.bookingsService.findAll(pagination);
   }
 
   @ApiBearerAuth()
