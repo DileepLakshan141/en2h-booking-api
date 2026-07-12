@@ -10,11 +10,11 @@ A JWT-secured NestJS REST API for managing services and customer bookings, built
 
 ### 1. Uploaded SRS Document (PDF)
 
-**Link:** _Add PDF link here_
+**Link:** https://drive.google.com/file/d/1WucKAMafwAn-V2PNkDz80sqzvrKHTUqw/view?usp=sharing
 
 ### 2. Uploaded Running Guide Document (PDF)
 
-**Link:** _Add PDF link here_
+**Link:** https://drive.google.com/file/d/1Q-yG6bCRRZ9a5QUkznXNS8szwCk_FS42/view?usp=sharing
 
 ### 3. Swagger Documentation (Live Deployed - Usable)
 
