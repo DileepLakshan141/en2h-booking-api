@@ -6,6 +6,31 @@
 
 A JWT-secured NestJS REST API for managing services and customer bookings, built with PostgreSQL and Prisma.
 
+## Useful Links
+
+### 1. Uploaded SRS Document (PDF)
+
+**Link:** _Add PDF link here_
+
+### 2. Uploaded Running Guide Document (PDF)
+
+**Link:** _Add PDF link here_
+
+### 3. Swagger Documentation (Live Deployed - Usable)
+
+**Link:** https://en2h-booking-api-production-1378.up.railway.app/api/docs
+
+### 4. Deployed Application
+
+**Link:** https://en2h-booking-api-production-1378.up.railway.app
+
+---
+
+## Notes
+
+- Database migrations can be executed using the Prisma commands described in the Running Guide document.
+- Migration files are located in the `prisma/migrations` directory at the project root.
+
 ## Features Delivered
 
 | Feature                                                       | Status |
@@ -21,15 +46,21 @@ A JWT-secured NestJS REST API for managing services and customer bookings, built
 | Pagination (Services & Bookings)                              | ✅     |
 | Filter Bookings by Status                                     | ✅     |
 | Search Bookings (by customer name/email)                      | ✅     |
-| Docker Support                                                | 🚧     |
 | Unit Testing                                                  | ✅     |
 | Refresh Token (with rotation)                                 | ✅     |
+| Docker Support                                                | 📋     |
 
-**Legend:** ✅ Done &nbsp;|&nbsp; 🚧 In Progress &nbsp;|&nbsp; 📋 Planned
+**Legend:** ✅ Done &nbsp;|&nbsp; 🚧 In Progress &nbsp;|&nbsp; 📋 Future Enhancement
 
 ## Table of Contents
 
 - [EN2H Booking Platform API](#en2h-booking-platform-api)
+  - [Useful Links](#useful-links)
+    - [1. Uploaded SRS Document (PDF)](#1-uploaded-srs-document-pdf)
+    - [2. Uploaded Running Guide Document (PDF)](#2-uploaded-running-guide-document-pdf)
+    - [3. Swagger Documentation (Live Deployed - Usable)](#3-swagger-documentation-live-deployed---usable)
+    - [4. Deployed Application](#4-deployed-application)
+  - [Notes](#notes)
   - [Features Delivered](#features-delivered)
   - [Table of Contents](#table-of-contents)
   - [Project Overview](#project-overview)
@@ -116,7 +147,7 @@ cp .env.example .env
 | `JWT_SECRET`             | Secret used to sign access tokens                                                                               | `your-super-secret-key`                                                           |
 | `JWT_ACCESS_EXPIRES_IN`  | Access token lifetime                                                                                           | `15m`                                                                             |
 | `JWT_REFRESH_SECRET`     | Secret used to sign refresh tokens (must differ from `JWT_SECRET`)                                              | `your-different-refresh-secret-key`                                               |
-| `JWT_REFRESH_EXPIRES_IN` | Refresh token lifetime                                                                                          | `7d`                                                                              |
+| `JWT_REFRESH_EXPIRES_IN` | Refresh token lifetime                                                                                          | `4d`                                                                              |
 
 ---
 
@@ -125,20 +156,17 @@ cp .env.example .env
 This project uses a **local PostgreSQL instance** (no cloud/managed database required).
 (above mentioned **DATABASE_URL** can be constructed by replacing the placeholder values with your actual values)
 
-1. Ensure PostgreSQL is installed and running locally.
+1. Ensure PostgreSQL and PgAdmin is installed and running locally.
 2. Create the database (via `psql` or a GUI tool like pgAdmin):
    ```sql
    CREATE DATABASE en2h_booking_api;
    ```
 3. Update `DATABASE_URL` in your `.env` to point to this database with your
    local credentials.
-4. Verify the connection:
-   ```bash
-   npx prisma db pull
-   ```
    No errors (an empty-schema notice is expected on a fresh database) confirms
    the connection string is correct.
-5. Apply existing migrations to your local database
+
+4. Apply existing migrations to your local database
    ```bash
       npx prisma migrate dev
    ```
